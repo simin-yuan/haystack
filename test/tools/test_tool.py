@@ -506,6 +506,30 @@ class TestToolAsync:
         assert restored.function == kwargs.get("function")
         assert restored.async_function == kwargs.get("async_function")
 
+    def test_from_dict_does_not_mutate_caller_data(self):
+        tool_dict = {
+            "type": "haystack.tools.tool.Tool",
+            "data": {
+                "name": "weather",
+                "description": "Get weather report",
+                "parameters": parameters,
+                "function": "test_tool.get_weather_report",
+                "outputs_to_string": {"handler": "test_tool.format_string"},
+                "inputs_from_state": {"location": "city"},
+                "outputs_to_state": {"documents": {"source": "docs", "handler": "test_tool.get_weather_report"}},
+            },
+        }
+
+        Tool.from_dict(tool_dict)
+
+        # The caller's dict keeps the serialized handles, so it stays dumpable and reusable.
+        assert tool_dict["data"]["function"] == "test_tool.get_weather_report"
+        assert tool_dict["data"]["outputs_to_string"] == {"handler": "test_tool.format_string"}
+        assert tool_dict["data"]["outputs_to_state"] == {
+            "documents": {"source": "docs", "handler": "test_tool.get_weather_report"}
+        }
+        assert Tool.from_dict(tool_dict).function == get_weather_report
+
     def test_from_dict_legacy_payload_without_async_function_key(self):
         # Payload produced before `async_function` existed.
         legacy = {

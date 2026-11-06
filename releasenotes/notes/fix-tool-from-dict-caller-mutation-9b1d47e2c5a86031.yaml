@@ -1,0 +1,8 @@
+---
+fixes:
+  - |
+    ``Tool.from_dict`` no longer mutates the dictionary it is given: it deserializes on a copy, so the caller's
+    ``data`` keeps the serialized ``function`` / ``async_function`` / ``outputs_to_string`` / ``outputs_to_state``
+    handles. Previously the dictionary held callables after the call, which made it impossible to dump it to JSON or
+    YAML and made a second ``from_dict`` on the same dictionary fail. Same fix as ``MetadataRouter`` (#13421),
+    ``MockChatGenerator`` (#13471) and ``ListJoiner`` (#13563).

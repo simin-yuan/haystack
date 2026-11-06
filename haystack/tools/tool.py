@@ -343,7 +343,9 @@ class Tool:
         :returns:
             Deserialized Tool.
         """
-        init_parameters = data["data"]
+        # Work on a copy: mutating the caller's dict would leave a callable where the serialized handle was,
+        # so the same dict could no longer be dumped to JSON nor deserialized a second time.
+        init_parameters = dict(data["data"])
         init_parameters["function"] = (
             deserialize_callable(init_parameters["function"]) if init_parameters.get("function") is not None else None
         )
