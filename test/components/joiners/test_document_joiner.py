@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import logging
+import math
 import re
 
 import pytest
@@ -382,6 +383,17 @@ class TestDocumentJoiner:
         output = joiner.run([documents_1, documents_2])
         assert len(output["documents"]) == 4
         assert all(doc.score is not None for doc in output["documents"])
+
+    def test_run_with_distribution_based_rank_fusion_join_mode_with_nan_score(self, caplog):
+        # A single NaN used to poison the mean and standard deviation of its retriever's scores,
+        # turning every rescaled score in that list into NaN.
+        joiner = DocumentJoiner(join_mode="distribution_based_rank_fusion")
+        documents_1 = [Document(id="a", content="a", score=0.6), Document(id="b", content="b", score=float("nan"))]
+        documents_2 = [Document(id="c", content="c", score=0.5), Document(id="d", content="d", score=0.3)]
+        with caplog.at_level(logging.WARNING):
+            output = joiner.run([documents_1, documents_2])
+        assert all(doc.score is not None and math.isfinite(doc.score) for doc in output["documents"])
+        assert "non-finite score" in caplog.text
 
     def test_run_with_top_k_in_run_method(self):
         joiner = DocumentJoiner()

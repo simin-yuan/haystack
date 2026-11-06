@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``DocumentJoiner`` now treats a non-finite score (``NaN`` or infinity) as 0 in
+    ``distribution_based_rank_fusion`` mode and logs a warning. Previously a single ``NaN``
+    turned every rescaled score of that retriever's documents into ``NaN``.

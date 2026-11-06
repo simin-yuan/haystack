@@ -16,6 +16,18 @@ from haystack.utils.misc import _reciprocal_rank_fusion
 logger = logging.getLogger(__name__)
 
 
+def _finite_score(document: Document) -> float:
+    """
+    The score to fuse for a Document: a missing or non-finite score counts as 0.
+
+    A single ``NaN`` otherwise propagates through the mean and standard deviation of a
+    retriever's scores and turns every rescaled score in that list into ``NaN``.
+    """
+    if document.score is None or not isfinite(document.score):
+        return 0.0
+    return document.score
+
+
 class JoinMode(Enum):
     """
     Enum for join mode.
@@ -270,7 +282,14 @@ class DocumentJoiner:
                 rescaled_lists.append(documents)
                 continue
 
-            scores_list = [doc.score if doc.score is not None else 0 for doc in documents]
+            non_finite = [doc.id for doc in documents if doc.score is not None and not isfinite(doc.score)]
+            if non_finite:
+                logger.warning(
+                    "Some of the Documents DocumentJoiner got have a non-finite score (NaN or infinity). They "
+                    "were treated as a score of 0 when rescaling: {document_ids}",
+                    document_ids=",".join(non_finite),
+                )
+            scores_list = [_finite_score(doc) for doc in documents]
 
             mean_score = sum(scores_list) / len(scores_list)
             std_dev = (sum((x - mean_score) ** 2 for x in scores_list) / len(scores_list)) ** 0.5
@@ -284,9 +303,9 @@ class DocumentJoiner:
                 [
                     replace(
                         doc,
-                        score=((doc.score if doc.score is not None else 0) - min_score) / delta_score
+                        score=(_finite_score(doc) - min_score) / delta_score
                         if scores_vary and delta_score != 0.0
-                        else (doc.score if doc.score is not None else 0.0),
+                        else _finite_score(doc),
                     )
                     for doc in documents
                 ]
