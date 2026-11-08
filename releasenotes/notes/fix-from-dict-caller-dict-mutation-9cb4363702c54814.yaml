@@ -1,0 +1,6 @@
+---
+fixes:
+  - |
+    ``SuperComponent.from_dict``, ``ChatPromptBuilder.from_dict`` and ``MultiRetriever.from_dict`` no longer rewrite the
+    dictionary they are given. They stored the deserialized objects back into ``data["init_parameters"]``, so the
+    caller's data could no longer be serialized and a second ``from_dict`` on the same dictionary failed.
