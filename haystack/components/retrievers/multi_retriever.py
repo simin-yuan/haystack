@@ -4,6 +4,7 @@
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import copy
 from math import inf
 from typing import Any, Literal
 
@@ -389,7 +390,10 @@ class MultiRetriever:
         :param data:
             Dictionary with the data to create the component.
         """
-        retrievers_data = data.get("init_parameters", {}).get("retrievers", {})
+        # The nested retriever dictionaries are shared with the caller, so a shallow copy of `data`
+        # is not enough: without the deepcopy the caller's inner dicts are rewritten too.
+        init_parameters = copy.deepcopy(data.get("init_parameters", {}))
+        retrievers_data = init_parameters.get("retrievers", {})
         if retrievers_data:
             retrievers = {}
             for name, retriever_data in retrievers_data.items():
@@ -400,5 +404,6 @@ class MultiRetriever:
                         f"Could not import class {retriever_data['type']} for retriever '{name}'. Error: {str(e)}"
                     ) from e
                 retrievers[name] = component_from_dict(cls=imported_class, data=retriever_data, name=name)
-            data["init_parameters"]["retrievers"] = retrievers
+            init_parameters["retrievers"] = retrievers
+            data = {**data, "init_parameters": init_parameters}
         return default_from_dict(cls, data)

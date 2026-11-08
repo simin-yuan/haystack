@@ -494,10 +494,12 @@ class SuperComponent(_SuperComponent):
             The deserialized SuperComponent.
         """
         # `is_pipeline_async` is a legacy key kept only for backward compatibility.
-        data["init_parameters"].pop("is_pipeline_async", None)
-        pipeline = Pipeline.from_dict(data["init_parameters"]["pipeline"])
-        data["init_parameters"]["pipeline"] = pipeline
-        return default_from_dict(cls, data)
+        # Work on a copy of `init_parameters`: the caller's dictionary has to keep the serialized
+        # pipeline, or a second `from_dict` on the same dict fails on the `Pipeline` object.
+        init_parameters = dict(data["init_parameters"])
+        init_parameters.pop("is_pipeline_async", None)
+        init_parameters["pipeline"] = Pipeline.from_dict(init_parameters["pipeline"])
+        return default_from_dict(cls, {**data, "init_parameters": init_parameters})
 
     def show(self, server_url: str = "https://mermaid.ink", params: dict | None = None, timeout: int = 30) -> None:
         """

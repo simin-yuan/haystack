@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import base64
+import copy
 import json
 import logging
 from typing import Any
@@ -737,6 +738,41 @@ class TestChatPromptBuilderDynamic:
         ]
         assert comp._variables == ["var", "required_var"]
         assert comp._required_variables == ["required_var"]
+
+    def test_from_dict_twice_on_the_same_dict(self):
+        data = {
+            "type": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder",
+            "init_parameters": {
+                "template": [
+                    {"content": [{"text": "text and {var}"}], "role": "user", "meta": {}, "name": None},
+                ],
+                "variables": ["var"],
+                "required_variables": [],
+            },
+        }
+
+        first = ChatPromptBuilder.from_dict(data)
+        second = ChatPromptBuilder.from_dict(data)
+
+        assert first.template == [ChatMessage.from_user("text and {var}")]
+        assert second.template == [ChatMessage.from_user("text and {var}")]
+
+    def test_from_dict_leaves_the_callers_dict_untouched(self):
+        data = {
+            "type": "haystack.components.builders.chat_prompt_builder.ChatPromptBuilder",
+            "init_parameters": {
+                "template": [
+                    {"content": [{"text": "text and {var}"}], "role": "user", "meta": {}, "name": None},
+                ],
+                "variables": ["var"],
+                "required_variables": [],
+            },
+        }
+        before = copy.deepcopy(data)
+
+        ChatPromptBuilder.from_dict(data)
+
+        assert data == before
 
     def test_from_dict_template_none(self):
         comp = ChatPromptBuilder.from_dict(

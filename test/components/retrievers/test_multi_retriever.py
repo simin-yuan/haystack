@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import asyncio
+import copy
 import os
 from typing import Any
 from unittest.mock import ANY, AsyncMock, Mock
@@ -404,6 +405,29 @@ class TestMultiRetriever:
         assert result.top_k == 5
         assert result.max_workers == 2
         assert result.join_mode == "concatenate"
+
+    def test_from_dict_twice_on_the_same_dict(self):
+        store = InMemoryDocumentStore()
+        store.write_documents([Document(content="hello world")])
+        serialized = MultiRetriever(retrievers={"bm25": InMemoryBM25Retriever(document_store=store)}).to_dict()
+
+        first = MultiRetriever.from_dict(serialized)
+        second = MultiRetriever.from_dict(serialized)
+
+        assert isinstance(first.retrievers["bm25"], InMemoryBM25Retriever)
+        assert isinstance(second.retrievers["bm25"], InMemoryBM25Retriever)
+
+    def test_from_dict_leaves_the_callers_dict_untouched(self):
+        store = InMemoryDocumentStore()
+        store.write_documents([Document(content="hello world")])
+        serialized = MultiRetriever(retrievers={"bm25": InMemoryBM25Retriever(document_store=store)}).to_dict()
+        before = copy.deepcopy(serialized)
+
+        MultiRetriever.from_dict(serialized)
+
+        assert serialized == before
+        # the nested retriever dictionary is the one a shallow copy would still rewrite
+        assert isinstance(serialized["init_parameters"]["retrievers"]["bm25"], dict)
 
     def test_from_dict_with_no_retrievers(self):
         data = {

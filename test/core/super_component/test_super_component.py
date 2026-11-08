@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import copy
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
@@ -280,6 +281,30 @@ class TestSuperComponent:
 
         deserialized = SuperComponent.from_dict(serialized)
         assert isinstance(deserialized.pipeline, Pipeline)
+
+    def test_from_dict_twice_on_the_same_dict(self, document_store):
+        pipeline = Pipeline()
+        pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
+        wrapper = SuperComponent(pipeline=pipeline, output_mapping={"retriever.documents": "documents"})
+        serialized = wrapper.to_dict()
+
+        first = SuperComponent.from_dict(serialized)
+        second = SuperComponent.from_dict(serialized)
+
+        assert isinstance(first.pipeline, Pipeline)
+        assert isinstance(second.pipeline, Pipeline)
+
+    def test_from_dict_leaves_the_callers_dict_untouched(self, document_store):
+        pipeline = Pipeline()
+        pipeline.add_component("retriever", InMemoryBM25Retriever(document_store=document_store))
+        wrapper = SuperComponent(pipeline=pipeline, output_mapping={"retriever.documents": "documents"})
+        serialized = wrapper.to_dict()
+        before = copy.deepcopy(serialized)
+
+        SuperComponent.from_dict(serialized)
+
+        assert serialized == before
+        assert isinstance(serialized["init_parameters"]["pipeline"], dict)
 
     def test_subclass_serialization(self, rag_pipeline):
         super_comp = SuperComponent(rag_pipeline)
