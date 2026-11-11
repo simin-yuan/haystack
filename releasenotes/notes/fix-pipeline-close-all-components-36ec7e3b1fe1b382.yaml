@@ -1,0 +1,7 @@
+---
+fixes:
+  - |
+    `Pipeline.close` and `Pipeline.close_async` now attempt to close every component even when one of them raises.
+    Previously the first failing `close` or `close_async` aborted the loop, so the components after it were never
+    released and their clients and connections stayed open. All components are now closed and the first error is
+    re-raised afterwards.
